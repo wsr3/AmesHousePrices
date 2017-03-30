@@ -6,3 +6,4 @@ Top 2%, used LASSO, GBM, RF...
 
 ### [A top 4% solution](https://blog.nycdatascience.com/student-works/kaggle-competition-2017-house-price-prediction/)
 
+### [Dealing with missing data](https://www.kaggle.com/gmayank32/house-prices-advanced-regression-techniques/ameshousing-filling-missing-values)
