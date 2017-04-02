@@ -1,0 +1,58 @@
+---
+title: "CleanData"
+output: html_document
+---
+## To do 2017/04/02
+* Parallel computing of mice
+* More impuatation methods
+* Time series 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+library(plyr)
+library(dplyr)
+library(mice) # for imputation
+library(zoo) # for time series
+```
+
+
+```{r cars}
+train.raw = read.csv("../data/train.csv")
+
+# summarize missing values
+na.var = colnames(train.raw)[apply(train.raw, 2, anyNA)]
+sapply(train.raw[na.var], function(x) sum(is.na(x)))
+
+# NAs in some variables actually indicate none, will assign to levels
+# only the following variables have NAs
+na.var = c("LotFrontage", "MasVnrType", "MasVnrArea", "Electrical")
+train.na = train.raw[na.var]
+summary(train.raw[na.var])
+
+# extract factor variables, including non-numerical ordinal variables,
+# OverallQual and OverallCond are numerical and ordinal 
+is.fact = sapply(train.raw, is.factor)
+train.fact = train.raw[, is.fact] 
+train.nonfact = train.raw[, !is.fact] 
+# replace NAs with "None"
+train.fact = sapply(train.fact, as.character)
+train.fact[is.na(train.fact)] = "None"
+train.fact = as.data.frame(train.fact)
+train.fact = sapply(train.fact, as.factor)
+# merge with train.nonfact
+train = cbind(train.fact, train.nonfact)
+
+# ------------------------------------------------------------
+# use cart in the "mice" package to impute NA
+# https://www.kaggle.com/c/house-prices-advanced-regression-techniques/discussion/24586
+# more methods to be tried
+#-------------------------------------------------------------
+tmp = mice(train, m=1, maxit=500, meth='cart', seed=0, printFlag=F)
+train = complete(tmp, 1)
+# generate time sold
+train$t = as.yearmon(paste(train$YrSold, train$MoSold, sep = "-"))
+summary(train)
+
+write.csv(train, "../data/trainCleaned.csv")
+```

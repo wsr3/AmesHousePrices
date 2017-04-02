@@ -1,1 +1,0 @@
-train = read.csv("../data/train.csv")
