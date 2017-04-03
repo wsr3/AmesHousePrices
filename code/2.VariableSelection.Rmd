@@ -1,0 +1,54 @@
+---
+title: "2.VariableSelection"
+output: html_document
+---
+
+## To do 2017/04/03
+* Group LASSO
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+library(plyr)
+library(dplyr)
+```
+
+
+```{r cars}
+train = read.csv("../data/trainCleaned.csv")
+
+# fac2dum function makes dummies from cat variables
+# http://r.789695.n4.nabble.com/Lasso-with-Categorical-Variables-td3490531.html
+fac2dum<-function(dfr, betweenColAndLevel="") 
+{ 
+  nc<-dim(dfr)[2] 
+  firstRow<-dfr[1,] 
+  coln<-colnames(dfr) 
+  retval<-do.call(cbind, lapply(seq(nc), function(ci){ 
+    if(is.factor(firstRow[,ci])) 
+    { 
+      lvls<-levels(firstRow[,ci])[-1] 
+      stretchedcols<-sapply(lvls, function(lvl){ 
+        rv<-dfr[,ci]==lvl 
+        mode(rv)<-"integer" 
+        return(rv) 
+      }) 
+      if(!is.matrix(stretchedcols)) 
+        stretchedcols<-matrix(stretchedcols, nrow=1) 
+      colnames(stretchedcols)<-paste(coln[ci], 
+                                     lvls, sep=betweenColAndLevel) 
+      return(stretchedcols) 
+    } 
+    else 
+    { 
+      curcol<-matrix(dfr[,ci], ncol=1) 
+      colnames(curcol)<-coln[ci] 
+      return(curcol) 
+    } 
+  })) 
+  rownames(retval)<-rownames(dfr) 
+  return(retval) 
+}
+
+
+```
