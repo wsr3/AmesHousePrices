@@ -3,52 +3,83 @@ title: "2.VariableSelection"
 output: html_document
 ---
 
-## To do 2017/04/03
-* Group LASSO
+## To do 2017/04/06
+* Boruta feature selection
+* Level combination
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 rm(list = ls())
 library(plyr)
 library(dplyr)
+library(Boruta)
+library(zoo)
+library(ggplot2)
 ```
 
 
-```{r cars}
-train = read.csv("../data/trainCleaned.csv")
+```{r selection}
+train.clean = read.csv("../data/trainCleaned.csv") 
 
-# fac2dum function makes dummies from cat variables
-# http://r.789695.n4.nabble.com/Lasso-with-Categorical-Variables-td3490531.html
-fac2dum<-function(dfr, betweenColAndLevel="") 
-{ 
-  nc<-dim(dfr)[2] 
-  firstRow<-dfr[1,] 
-  coln<-colnames(dfr) 
-  retval<-do.call(cbind, lapply(seq(nc), function(ci){ 
-    if(is.factor(firstRow[,ci])) 
-    { 
-      lvls<-levels(firstRow[,ci])[-1] 
-      stretchedcols<-sapply(lvls, function(lvl){ 
-        rv<-dfr[,ci]==lvl 
-        mode(rv)<-"integer" 
-        return(rv) 
-      }) 
-      if(!is.matrix(stretchedcols)) 
-        stretchedcols<-matrix(stretchedcols, nrow=1) 
-      colnames(stretchedcols)<-paste(coln[ci], 
-                                     lvls, sep=betweenColAndLevel) 
-      return(stretchedcols) 
-    } 
-    else 
-    { 
-      curcol<-matrix(dfr[,ci], ncol=1) 
-      colnames(curcol)<-coln[ci] 
-      return(curcol) 
-    } 
-  })) 
-  rownames(retval)<-rownames(dfr) 
-  return(retval) 
-}
+#=============================================
+# Boruta feature selection based on train data
+#=============================================
+features = setdiff(names(train.clean),c("X", "Id", "SalePrice", 
+                                   "YrSold", "MoSold"))
+response = train.clean$SalePrice
+set.seed(0)
+bor.results = Boruta(train.clean[features], response, 
+                      maxRuns=101, doTrace=0)
+plot(bor.results)
+save(bor.results, file="../result/2.boruta.rda")
+bor.sel = getSelectedAttributes(bor.results, withTentative = F)
+getSelectedAttributes(bor.results)
+train.sel = train.clean[, bor.sel] %>% 
+  cbind(train.clean[, names(train.clean) %in% 
+                      c("SalePrice", "YrSold", "MoSold")]) %>% 
+  mutate(t = as.yearmon(paste(train.clean$YrSold, train.clean$MoSold, 
+                              sep = "-"))) # generate time sold
+
+write.csv(train.sel, "../data/trainSelected.csv")
+
+
+
+#=============================================
+# variables whose levels need to be combined
+# 
+#=============================================
+# mssubclass
+ggplot(train.clean, aes(x=reorder(as.factor(MSSubClass), log(SalePrice), FUN=median), y=log(SalePrice))) + geom_boxplot()
+
+# mszoning
+ggplot(train.clean, aes(x=reorder(MSZoning, log(SalePrice), FUN=median), y=log(SalePrice))) + geom_boxplot()
+
+# neighborhood
+ggplot(train.clean, aes(x=reorder(Neighborhood, log(SalePrice), FUN=median), y=log(SalePrice))) + geom_boxplot()
+
+# condition1
+ggplot(train.clean, aes(x=reorder(Condition1, log(SalePrice), FUN=median), y=log(SalePrice))) + geom_boxplot()
+
+# condition2
+ggplot(train.clean, aes(x=reorder(Condition2, log(SalePrice), FUN=median), y=log(SalePrice))) + geom_boxplot()
+
+# roofmatl
+ggplot(train.clean, aes(x=reorder(RoofMatl, log(SalePrice), FUN=median), y=log(SalePrice))) + geom_boxplot()
+
+# exterior1st
+ggplot(train.clean, aes(x=reorder(Exterior1st, log(SalePrice), FUN=median), y=log(SalePrice))) + geom_boxplot()
+
+# exterior2nd
+ggplot(train.clean, aes(x=reorder(Exterior2nd, log(SalePrice), FUN=median), y=log(SalePrice))) + geom_boxplot()
+
+# functional
+ggplot(train.clean, aes(x=reorder(Functional, log(SalePrice), FUN=median), y=log(SalePrice))) + geom_boxplot()
+
+# saletype
+ggplot(train.clean, aes(x=reorder(SaleType, log(SalePrice), FUN=median), y=log(SalePrice))) + geom_boxplot()
+
+# salecondition
+ggplot(train.clean, aes(x=reorder(SaleCondition, log(SalePrice), FUN=median), y=log(SalePrice))) + geom_boxplot()
 
 
 ```

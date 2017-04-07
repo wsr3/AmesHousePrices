@@ -1,0 +1,75 @@
+---
+title: "ModelFit"
+output: html_document
+---
+## To do 2017/04/05
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+library(plyr)
+library(dplyr)
+library(mice) # for imputation
+library(zoo) # for time series
+library(caret)
+library(parallel)
+library(doParallel)
+cluster = makeCluster(detectCores() - 1)
+registerDoParallel(cluster)
+```
+
+
+```{r clean}
+train = read.csv("../data/trainSelected.csv")
+test = read.csv("../data/cleanedTest.csv")
+
+# fac2dum function makes dummies from cat variables
+# http://r.789695.n4.nabble.com/Lasso-with-Categorical-Variables-td3490531.html
+fac2dum<-function(dfr, betweenColAndLevel="") {
+  nc<-dim(dfr)[2]
+  firstRow<-dfr[1,]
+  coln<-colnames(dfr)
+  retval<-do.call(cbind, lapply(seq(nc), function(ci){
+    if(is.factor(firstRow[,ci]))
+    {
+      lvls<-levels(firstRow[,ci])[-1]
+      stretchedcols<-sapply(lvls, function(lvl){
+        rv<-dfr[,ci]==lvl
+        mode(rv)<-"integer"
+        return(rv)
+      })
+      if(!is.matrix(stretchedcols))
+        stretchedcols<-matrix(stretchedcols, nrow=1)
+      colnames(stretchedcols)<-paste(coln[ci],
+                                     lvls, sep=betweenColAndLevel)
+      return(stretchedcols)
+    }
+    else
+    {
+      curcol<-matrix(dfr[,ci], ncol=1)
+      colnames(curcol)<-coln[ci]
+      return(curcol)
+    }
+  }))
+  rownames(retval)<-rownames(dfr)
+  return(retval)
+}
+y = train$SalePrice
+X = fac2dum(train[, c(2:52, 54)])
+par.xg = data.frame(mtry=1:10)
+ctrl.xg = trainControl(method="repeatedcv", repeats=10, number=10)
+xgbstTune = train(y=y, x=X, method="xgbTree", 
+                  trControl=ctrl.xg, 
+                  preProc=c("center", "scale"), 
+                  allowParallel=T)
+xgbstTune$bestTune
+save(xgbstTune, file="../result/xgTune.rda")
+load(file="../result/xgTune.rda")
+x.test = test[, names(train[, c(2:52, 54)])]
+x.test = fac2dum(x.test)
+y.test = test$SalePrice
+
+stopCluster(cluster)
+registerDoSEQ()
+```
